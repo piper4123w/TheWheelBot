@@ -1,9 +1,24 @@
 {
     "options": [
-        "Brass Tapp",
-        "Rays Growler",
-        "Natty Oaks",
-        "Mainstream Bar and Grill",
-        "Jackson\u2019s Blue Ribbon"
+        {
+            "name": "Rays Growler",
+            "weight": 1
+        },
+        {
+            "name": "Natty Oaks",
+            "weight": 1
+        },
+        {
+            "name": "Mainstream Bar and Grill",
+            "weight": 1
+        },
+        {
+            "name": "Jackson\u2019s Blue Ribbon",
+            "weight": 1
+        },
+        {
+            "name": "Brass Tapp",
+            "weight": 1
+        }
     ]
 }

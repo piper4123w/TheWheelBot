@@ -1,6 +1,5 @@
 import json
 import random
-import asyncio
 
 
 MODULE_COMMAND="$wheel"
@@ -28,7 +27,12 @@ async def handle_message(message):
 async def list_options(message):
     options = parse_options_file()
     if options:
-        optionsStr = "\n\t" + "\n\t".join(options)
+        space = "\n\t"
+        optionsStr = ""
+        for option in options:
+            print(f"Option: {option}")  # Debugging line to see each option
+            if len(option) > 0:
+                optionsStr += f"{space}{option['name']} @ {option['weight']}"
         await message.channel.send(f"Current items on the wheel: {optionsStr}")
     else:
         await message.channel.send("The wheel is empty! Please add items first.")
@@ -48,16 +52,42 @@ async def parse_help(remainder: str, message):
 
 
 async def spin_wheel(message):
-    await message.channel.send("Spinning the wheel...")
+    result = get_random_weighted_option()
+    update_weights(result)
+    await message.channel.send(f"The Wheel has Spoken! The result is {result}")
+
+
+def get_random_weighted_option():
     options = parse_options_file()
     if not options:
-        await message.channel.send("The wheel is empty! Please add items first.")
-        return
-    else:
-        await list_options(message)
-    await asyncio.sleep(3) # pause for dramatic effect
-    result = random.choice(options)
-    await message.channel.send(f"...and the result is: {result}")
+        return None
+    weighted_options = []
+    for option in options:
+        weighted_options.extend([option['name']] * option['weight'])    
+    return random.choice(weighted_options)
+
+
+def update_weights(picked_option):
+    """
+    Updates the weights of the options in the options file based on the picked option.
+
+    This function increments all option weights by 1, except for the picked option,
+    which is reset to 0. This is used to adjust the likelihood of each option being
+    picked in future spins of the wheel.
+
+    Args:
+        picked_option (str): The option that was picked from the wheel.
+
+    Returns:
+        None
+    """
+    options = parse_options_file()
+    for option in options:
+        if option['name'] != picked_option:
+            option['weight'] += 1
+        else:
+            option['weight'] = 0
+    save_options_file(options)
 
 
 async def parse_add(addition: str, message):
@@ -85,14 +115,15 @@ async def parse_add(addition: str, message):
         new_additions = [item for item in additions if item not in options]
         if new_additions:
             await message.channel.send(f"Adding the following items to the wheel: {', '.join(new_additions)}")
-            options.extend(new_additions)
+            for name in new_additions:
+                options.append({'name': name, 'weight': 1})
             save_options_file(options)
         else:
             await message.channel.send("All the items are already in the wheel.")
     else:
         await message.channel.send(f"Adding '{addition}' to the wheel!")
         options = parse_options_file()
-        options.append(addition)
+        options.append({'name':addition, 'weight':1})
         save_options_file(options)
 
 
@@ -114,12 +145,13 @@ async def parse_remove(removal: str, message):
         await message.channel.send("Please specify an item to remove.")
         return
     options = parse_options_file()
-    if removal in options:
-        options.remove(removal)
-        save_options_file(options)
-        await message.channel.send(f"Removed '{removal}' from the wheel!")
-    else:
-        await message.channel.send(f"'{removal}' is not in the wheel.")
+    for option in options:
+        if option['name'] == removal:
+            options.remove(option)
+            save_options_file(options)
+            await message.channel.send(f"Removed '{removal}' from the wheel!")
+            return
+    await message.channel.send(f"'{removal}' is not in the wheel.")
 
 
 def parse_options_file():
