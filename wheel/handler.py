@@ -118,14 +118,14 @@ async def parse_add(addition: str, ctx: commands.Context):
             await ctx.send(f"Adding the following items to the wheel: {', '.join(new_additions)}")
             for name in new_additions:
                 options.append({'name': name, 'weight': 1})
-            save_options_file(options)
+            await save_options_message(ctx, options)
         else:
             await ctx.send("All the items are already in the wheel.")
     else:
         await ctx.send(f"Adding '{addition}' to the wheel!")
         options = await parse_options_message(ctx)
         options.append({'name':addition, 'weight':1})
-        save_options_file(options)
+        await save_options_message(ctx, options)
 
 
 async def parse_remove(removal: str, ctx: commands.Context):
@@ -149,7 +149,7 @@ async def parse_remove(removal: str, ctx: commands.Context):
     for option in options:
         if option['name'] == removal:
             options.remove(option)
-            save_options_file(options)
+            await save_options_message(options, ctx)
             await ctx.send(f"Removed '{removal}' from the wheel!")
             return
     await ctx.send(f"'{removal}' is not in the wheel.")
@@ -178,20 +178,3 @@ async def save_options_message(items, ctx: commands.Context):
                 if message.author == ctx.bot.user:
                     jsonStr = json.dumps({"options":items}, indent=4)
                     await message.edit(content=jsonStr)
-
-
-def save_options_file(items):
-    """
-    Save the updated list of items to the options file in JSON format.
-
-    Args:
-        items (list): A list of items to be saved to the options file.
-
-    The function writes the list of items to a file named 'options.json' in the
-    current working directory. The items are stored under the key 'options' in
-    the JSON file, and the JSON is formatted with an indentation of 4 spaces.
-    """
-    # This function saves the updated list of items back to the options file.
-    # It writes the list to a JSON file.
-    with open('options.json', 'w') as file:
-        json.dump({"options":items}, file, indent=4)
