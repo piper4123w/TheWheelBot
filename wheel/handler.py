@@ -1,31 +1,29 @@
 import json
 import random
+from discord.ext import commands
 
 
-MODULE_COMMAND="$wheel"
-
-
-async def handle_message(message):
-    if message.content.startswith(f"{MODULE_COMMAND} add"):
-        remainder = message.content[len("$wheel add "):].strip()
+async def handle_message(ctx: commands.Context, command):
+    if command.startswith(f"add"):
+        remainder = command[len("add "):].strip()
         # You can now use item_to_add for further processing
-        await parse_add(remainder, message)
-    elif message.content.startswith(f"{MODULE_COMMAND} remove"):
-        remainder = message.content[len("$wheel remove "):].strip()
-        await parse_remove(remainder, message)
-    elif message.content.startswith(f"{MODULE_COMMAND} list"):
-        await list_options(message)
-    elif message.content.startswith(f"{MODULE_COMMAND} spin"):
-        await spin_wheel(message)
-    elif "help" in message.content:
-        remainder = message.content[len("$wheel help "):].strip()
-        await parse_help(remainder, message)
+        await parse_add(remainder, ctx)
+    elif command.startswith("remove"):
+        remainder = command[len("remove "):].strip()
+        await parse_remove(remainder, ctx)
+    elif command.startswith("list"):
+        await list_options(ctx)
+    elif command.startswith(f"spin"):
+        await spin_wheel(ctx)
+    elif "help" in command:
+        remainder = command[len("help "):].strip()
+        await parse_help(remainder, ctx)
     else:
-        await message.channel.send("Unknown command. Please use `'list'`, `'add'`, `'remove'`, `'spin'`, or `'help'`.")
+        await ctx.send("Unknown command. Please use `'list'`, `'add'`, `'remove'`, `'spin'`, or `'help'`.")
 
 
-async def list_options(message):
-    options = parse_options_file()
+async def list_options(ctx: commands.Context):
+    options = await parse_options_message(ctx)
     if options:
         space = "\n\t"
         optionsStr = ""
@@ -33,32 +31,33 @@ async def list_options(message):
             print(f"Option: {option}")  # Debugging line to see each option
             if len(option) > 0:
                 optionsStr += f"{space}{option['name']} @ {option['weight']}"
-        await message.channel.send(f"Current items on the wheel: {optionsStr}")
+        await ctx.send(f"Current items on the wheel: {optionsStr}")
     else:
-        await message.channel.send("The wheel is empty! Please add items first.")
+        await ctx.send("The wheel is empty! Please add items first.")
 
 
-async def parse_help(remainder: str, message):
+async def parse_help(remainder: str, ctx: commands.Context):
         if len(remainder) == 0:
-            await message.channel.send("$wheel - command module for spinning the wheel of fate\n\tCommands: `'add'`, `'remove'`, `'spin'`, `'help'`")
+            await ctx.send("$wheel - command module for spinning the wheel of fate\n\tCommands: `'add'`, `'remove'`, `'spin'`, `'help'`")
         if "add" in remainder:
-            await message.channel.send("Usage:\n\t`$wheel add <item>` - Adds an item to the wheel.\n\t`$wheel add <item1>,<item2>,...` - Adds multiple items to the wheel.")
+            await ctx.send("Usage:\n\t`$wheel add <item>` - Adds an item to the wheel.\n\t`$wheel add <item1>,<item2>,...` - Adds multiple items to the wheel.")
         if "remove" in remainder:
-            await message.channel.send("Usage:\n\t`$wheel remove <item>` - Removes an item from the wheel.")
+            await ctx.send("Usage:\n\t`$wheel remove <item>` - Removes an item from the wheel.")
         if "list" in remainder:
-            await message.channel.send("Usage:\n\t`$wheel list` - Lists all items currently on the wheel.")
+            await ctx.send("Usage:\n\t`$wheel list` - Lists all items currently on the wheel.")
         if "spin" in remainder:
-            await message.channel.send("Usage:\n\t`$wheel spin` - Spins the wheel and randomly selects an item.")
+            await ctx.send("Usage:\n\t`$wheel spin` - Spins the wheel and randomly selects an item.")
 
 
-async def spin_wheel(message):
-    result = get_random_weighted_option()
-    update_weights(result)
-    await message.channel.send(f"The Wheel has Spoken! The result is {result}")
+async def spin_wheel(ctx: commands.Context):
+    message = await ctx.send("Spinning the wheel...")
+    result = await get_random_weighted_option(ctx)
+    await update_weights(result, ctx)
+    await message.edit(content=f"The Wheel has Spoken! The result is `{result}`")
 
 
-def get_random_weighted_option():
-    options = parse_options_file()
+async def get_random_weighted_option(ctx: commands.Context):
+    options = await parse_options_message(ctx)
     if not options:
         return None
     weighted_options = []
@@ -67,7 +66,7 @@ def get_random_weighted_option():
     return random.choice(weighted_options)
 
 
-def update_weights(picked_option):
+async def update_weights(picked_option, ctx: commands.Context):
     """
     Updates the weights of the options in the options file based on the picked option.
 
@@ -81,16 +80,18 @@ def update_weights(picked_option):
     Returns:
         None
     """
-    options = parse_options_file()
+    # options = parse_options_file()
+    options = await parse_options_message(ctx)
     for option in options:
         if option['name'] != picked_option:
             option['weight'] += 1
         else:
             option['weight'] = 0
-    save_options_file(options)
+    # save_options_file(options)
+    await save_options_message(options, ctx)
 
 
-async def parse_add(addition: str, message):
+async def parse_add(addition: str, ctx: commands.Context):
     """
     Asynchronously parses and adds new items to the wheel.
 
@@ -107,27 +108,27 @@ async def parse_add(addition: str, message):
         None
     """
     if len(addition) == 0:
-        await message.channel.send("Please specify a new item to add.")
+        await ctx.send("Please specify a new item to add.")
         return
     if "," in addition:
         additions = [item.strip() for item in addition.split(",")]
-        options = parse_options_file()
+        options = await parse_options_message(ctx)
         new_additions = [item for item in additions if item not in options]
         if new_additions:
-            await message.channel.send(f"Adding the following items to the wheel: {', '.join(new_additions)}")
+            await ctx.send(f"Adding the following items to the wheel: {', '.join(new_additions)}")
             for name in new_additions:
                 options.append({'name': name, 'weight': 1})
             save_options_file(options)
         else:
-            await message.channel.send("All the items are already in the wheel.")
+            await ctx.send("All the items are already in the wheel.")
     else:
-        await message.channel.send(f"Adding '{addition}' to the wheel!")
-        options = parse_options_file()
+        await ctx.send(f"Adding '{addition}' to the wheel!")
+        options = await parse_options_message(ctx)
         options.append({'name':addition, 'weight':1})
         save_options_file(options)
 
 
-async def parse_remove(removal: str, message):
+async def parse_remove(removal: str, ctx: commands.Context):
     """
     Asynchronously parses and removes an item from the wheel.
 
@@ -142,39 +143,41 @@ async def parse_remove(removal: str, message):
         None
     """
     if len(removal) == 0:
-        await message.channel.send("Please specify an item to remove.")
+        await ctx.send("Please specify an item to remove.")
         return
-    options = parse_options_file()
+    options = await parse_options_message(ctx)
     for option in options:
         if option['name'] == removal:
             options.remove(option)
             save_options_file(options)
-            await message.channel.send(f"Removed '{removal}' from the wheel!")
+            await ctx.send(f"Removed '{removal}' from the wheel!")
             return
-    await message.channel.send(f"'{removal}' is not in the wheel.")
+    await ctx.send(f"'{removal}' is not in the wheel.")
 
 
-def parse_options_file():
-    """
-    Parses the 'options.json' file and retrieves the options.
+async def parse_options_message(ctx: commands.Context):
+    for channel in ctx.guild.text_channels:
+        if channel.name == "wheel_data":
+            pins = await channel.pins()
+            for message in pins:
+                if message.author == ctx.bot.user:
+                    try:
+                        data = json.loads(message.content)
+                        return data['options']
+                    except json.JSONDecodeError:
+                        print("Error decoding the pinned message content.")
+                        return []
+    return []
 
-    This function attempts to open and read the 'options.json' file located in the current directory.
-    If the file is found and successfully decoded, it returns the list of options contained in the file.
-    If the file is not found or there is an error decoding the file, it prints an error message and returns an empty list.
 
-    Returns:
-        list: A list of options if the file is successfully read and decoded, otherwise an empty list.
-    """
-    try:
-        with open('options.json', 'r') as file:
-            data = json.load(file)
-            return data['options']
-    except FileNotFoundError:
-        print("The options file was not found.")
-        return []
-    except json.JSONDecodeError:
-        print("Error decoding the options file.")
-        return []
+async def save_options_message(items, ctx: commands.Context):
+    for channel in ctx.guild.text_channels:
+        if channel.name == "wheel_data":
+            pins = await channel.pins()
+            for message in pins:
+                if message.author == ctx.bot.user:
+                    jsonStr = json.dumps({"options":items}, indent=4)
+                    await message.edit(content=jsonStr)
 
 
 def save_options_file(items):
