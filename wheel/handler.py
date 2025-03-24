@@ -4,6 +4,22 @@ from discord.ext import commands
 
 
 async def handle_message(ctx: commands.Context, command):
+    """
+    Handles incoming messages and executes the appropriate command.
+
+    Args:
+        ctx (commands.Context): The context in which a command is being invoked under.
+        command (str): The command string to be processed.
+
+    Commands:
+        - add <item>: Adds an item to the list.
+        - remove <item>: Removes an item from the list.
+        - list: Lists all items.
+        - spin: Spins the wheel.
+        - help <command>: Provides help information for a specific command.
+
+    If the command is not recognized, it sends an error message indicating the valid commands.
+    """
     if command.startswith(f"add"):
         remainder = command[len("add "):].strip()
         # You can now use item_to_add for further processing
@@ -23,6 +39,19 @@ async def handle_message(ctx: commands.Context, command):
 
 
 async def list_options(ctx: commands.Context):
+    """
+    Lists all options currently on the wheel.
+
+    This function sends a message to the context channel indicating that it is listing all items on the wheel.
+    It then retrieves the options from the wheel and formats them into a string, which is used to update the message.
+    If there are no items on the wheel, it updates the message to indicate that the wheel is empty.
+
+    Args:
+        ctx (commands.Context): The context in which the command was invoked.
+
+    Returns:
+        None
+    """
     message = ctx.send("Listing all items on the wheel...")
     options = await parse_options_message(ctx)
     if options:
@@ -38,6 +67,20 @@ async def list_options(ctx: commands.Context):
 
 
 async def parse_help(remainder: str, ctx: commands.Context):
+        """
+        Parses the help command and sends appropriate usage instructions based on the remainder of the command.
+
+        Args:
+            remainder (str): The remaining part of the command after the initial help keyword.
+            ctx (commands.Context): The context in which the command was invoked.
+
+        Usage:
+            - `$wheel` or `$wheel help`: Displays the general help message for the wheel command module.
+            - `$wheel help add`: Displays usage instructions for adding items to the wheel.
+            - `$wheel help remove`: Displays usage instructions for removing items from the wheel.
+            - `$wheel help list`: Displays usage instructions for listing all items on the wheel.
+            - `$wheel help spin`: Displays usage instructions for spinning the wheel.
+        """
         if len(remainder) == 0:
             await ctx.send("$wheel - command module for spinning the wheel of fate\n\tCommands: `'add'`, `'remove'`, `'spin'`, `'help'`")
         if "add" in remainder:
@@ -51,6 +94,19 @@ async def parse_help(remainder: str, ctx: commands.Context):
 
 
 async def spin_wheel(ctx: commands.Context):
+    """
+    Spins a virtual wheel and sends the result to the Discord channel.
+
+    This function sends a message indicating that the wheel is spinning,
+    determines a random weighted option, updates the weights accordingly,
+    and then edits the original message to display the result.
+
+    Args:
+        ctx (commands.Context): The context in which the command was invoked.
+
+    Returns:
+        None
+    """
     message = await ctx.send("Spinning the wheel...")
     result = await get_random_weighted_option(ctx)
     await update_weights(result, ctx)
@@ -58,6 +114,18 @@ async def spin_wheel(ctx: commands.Context):
 
 
 async def get_random_weighted_option(ctx: commands.Context):
+    """
+    Asynchronously retrieves a random weighted option from a list of options.
+
+    This function parses a message to extract options, each with an associated weight,
+    and then randomly selects one of the options based on their weights.
+
+    Args:
+        ctx (commands.Context): The context of the command invocation.
+
+    Returns:
+        str: The name of the randomly selected option based on weight, or None if no options are available.
+    """
     options = await parse_options_message(ctx)
     if not options:
         return None
@@ -159,6 +227,22 @@ async def parse_remove(removal: str, ctx: commands.Context):
 
 
 async def parse_options_message(ctx: commands.Context):
+    """
+    Parses the pinned message in the 'wheel_data' text channel and extracts options.
+
+    This function iterates through all text channels in the guild to find the 
+    'wheel_data' channel. It then retrieves all pinned messages in that channel 
+    and looks for a message authored by the bot. If such a message is found, it 
+    attempts to parse the message content as JSON and extract the 'options' field.
+
+    Args:
+        ctx (commands.Context): The context of the command invocation.
+
+    Returns:
+        list: A list of options extracted from the pinned message content. 
+              Returns an empty list if no valid pinned message is found or if 
+              there is an error decoding the JSON content.
+    """
     for channel in ctx.guild.text_channels:
         if channel.name == "wheel_data":
             pins = await channel.pins()
@@ -174,6 +258,13 @@ async def parse_options_message(ctx: commands.Context):
 
 
 async def save_options_message(items, ctx: commands.Context):
+    """
+    Asynchronously saves the given items as a JSON string in a pinned message in the "wheel_data" text channel.
+
+    Args:
+        items (list): The list of items to be saved.
+        ctx (commands.Context): The context in which the command was invoked, providing access to the guild and bot.
+    """
     for channel in ctx.guild.text_channels:
         if channel.name == "wheel_data":
             pins = await channel.pins()
