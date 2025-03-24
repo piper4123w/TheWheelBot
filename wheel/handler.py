@@ -23,6 +23,7 @@ async def handle_message(ctx: commands.Context, command):
 
 
 async def list_options(ctx: commands.Context):
+    message = ctx.send("Listing all items on the wheel...")
     options = await parse_options_message(ctx)
     if options:
         space = "\n\t"
@@ -31,9 +32,9 @@ async def list_options(ctx: commands.Context):
             print(f"Option: {option}")  # Debugging line to see each option
             if len(option) > 0:
                 optionsStr += f"{space}{option['name']} @ {option['weight']}"
-        await ctx.send(f"Current items on the wheel: {optionsStr}")
+        await message.edit(content=f"Current items on the wheel: {optionsStr}")
     else:
-        await ctx.send("The wheel is empty! Please add items first.")
+        await message.edit(content="The wheel is empty! Please add items first.")
 
 
 async def parse_help(remainder: str, ctx: commands.Context):
@@ -107,22 +108,23 @@ async def parse_add(addition: str, ctx: commands.Context):
     Returns:
         None
     """
+    message = ctx.send(f"Adding '{addition}' to the wheel...")
     if len(addition) == 0:
-        await ctx.send("Please specify a new item to add.")
+        await message.edit(content="Please specify a new item to add.")
         return
     if "," in addition:
         additions = [item.strip() for item in addition.split(",")]
         options = await parse_options_message(ctx)
         new_additions = [item for item in additions if item not in options]
         if new_additions:
-            await ctx.send(f"Adding the following items to the wheel: {', '.join(new_additions)}")
+            await message.edit(content=f"Adding the following items to the wheel: {', '.join(new_additions)}")
             for name in new_additions:
                 options.append({'name': name, 'weight': 1})
             await save_options_message(ctx, options)
         else:
-            await ctx.send("All the items are already in the wheel.")
+            await message.edit(content="All the items are already in the wheel.")
     else:
-        await ctx.send(f"Adding '{addition}' to the wheel!")
+        await message.edit(content=f"Adding '{addition}' to the wheel!")
         options = await parse_options_message(ctx)
         options.append({'name':addition, 'weight':1})
         await save_options_message(ctx, options)
@@ -145,14 +147,15 @@ async def parse_remove(removal: str, ctx: commands.Context):
     if len(removal) == 0:
         await ctx.send("Please specify an item to remove.")
         return
+    message = ctx.send(f"Removing '{removal}' from the wheel...")
     options = await parse_options_message(ctx)
     for option in options:
         if option['name'] == removal:
             options.remove(option)
             await save_options_message(options, ctx)
-            await ctx.send(f"Removed '{removal}' from the wheel!")
+            await message.edit(content=f"Removed '{removal}' from the wheel!")
             return
-    await ctx.send(f"'{removal}' is not in the wheel.")
+    await message.edit(content=f"'{removal}' is not in the wheel.")
 
 
 async def parse_options_message(ctx: commands.Context):
