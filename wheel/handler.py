@@ -243,7 +243,7 @@ async def parse_add(addition: str, ctx: commands.Context):
     if "," in addition:
         additions = [item.strip() for item in addition.split(",")]
         options = await parse_options_message(ctx)
-        new_additions = [item for item in additions if item not in options]
+        new_additions = [item for item in additions if item not in options and item.strip() != ""]
         if new_additions:
             await message.edit(content=f"Adding the following items to the wheel: {', '.join(new_additions)}")
             for name in new_additions:
@@ -253,10 +253,13 @@ async def parse_add(addition: str, ctx: commands.Context):
         else:
             await message.edit(content="All the items are already in the wheel.")
     else:
-        await message.edit(content=f"Added '{addition}' to the wheel!")
-        options = await parse_options_message(ctx)
-        options.append({'name':addition, 'weight':1})
-        await save_options_message(options, ctx)
+        if addition.strip() != "":
+            options = await parse_options_message(ctx)
+            options.append({'name':addition, 'weight':1})
+            await message.edit(content=f"Added '{addition}' to the wheel!")
+            await save_options_message(options, ctx)
+        else:
+            await message.edit(content="Option cannot be an empty string, Please specify a new item to add.")
 
 
 async def parse_remove(removal: str, ctx: commands.Context):
