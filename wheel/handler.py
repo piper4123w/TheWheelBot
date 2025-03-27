@@ -112,7 +112,7 @@ async def list_options(ctx: commands.Context):
     Returns:
         None
     """
-    message = ctx.send("Listing all items on the wheel...")
+    message = await ctx.send("Listing all items on the wheel...")
     options = await parse_options_message(ctx)
     if options:
         space = "\n\t"
