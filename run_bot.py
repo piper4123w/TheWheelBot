@@ -10,15 +10,14 @@ bot = commands.Bot(command_prefix='$', intents=intents)
 
 
 @bot.command(name='hello')
-async def handle_hello_command(ctx):
+async def handle_hello_command(ctx: commands.Context):
     print('handling hello command')
     await ctx.send(f'Hello {ctx.author}!')
 
 
 @bot.command(name='wheel')
-async def handle_wheel_command(ctx, *, command: str):
-        print('handling wheel command')
-        await handle_message(ctx.message)
+async def handle_wheel_command(ctx: commands.Context, *, command: str):
+        await handle_message(ctx, command)
 
 
 def get_secret(key):
