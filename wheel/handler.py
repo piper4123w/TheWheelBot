@@ -34,8 +34,68 @@ async def handle_message(ctx: commands.Context, command):
     elif "help" in command:
         remainder = command[len("help "):].strip()
         await parse_help(remainder, ctx)
+    # -- ADMIN COMMANDS --
+    elif command.startswith("reset"):
+        remainder = command[len("reset "):].strip()
+        await parse_reset(remainder, ctx)
     else:
         await ctx.send("Unknown command. Please use `'list'`, `'add'`, `'remove'`, `'spin'`, or `'help'`.")
+
+
+async def parse_reset(remainder: str, ctx: commands.Context):
+    """
+    ADMIN: Handles the reset command for the wheel bot.
+
+    This function processes subcommands related to resetting the wheel's options or weights.
+    It provides help information, resets weights to default values, or prompts the user for
+    confirmation before resetting options.
+
+    Args:
+        remainder (str): The subcommand or additional arguments provided by the user.
+        ctx (commands.Context): The context of the command invocation, including the bot and message details.
+
+    Subcommands:
+        - "help": Displays usage instructions for the reset command.
+        - "weights": Resets all weights to their default value of 1.
+        - "options": Prompts the user for confirmation before resetting all options to their default values.
+    """
+    if remainder.startswith("help") or len(remainder) == 0:
+        await ctx.send("ADMIN ONLY - Usage:\n\t`$wheel reset [SUBCOMMAND]`\n\t`options` - Resets the wheel options to the default values.\n\t`weights` - Resets the wheel weights to the default values.")
+    elif remainder.startswith("weights"):
+        message = await ctx.send("Resetting all weights to 1...")
+        await reset_weights(ctx)
+        await message.edit(content="All weights have been reset to 1.")
+    elif remainder.startswith("options"):
+        message = await ctx.send("Resetting all options...")
+        await reset_options(ctx)
+        await message.edit(content="All options have been reset.")
+
+
+async def reset_options(ctx: commands.Context):
+    """
+    Resets the options for the wheel by clearing the current options and saving an empty list.
+
+    Args:
+        ctx (commands.Context): The context of the command invocation, which provides
+            information about the execution state and allows interaction with the Discord API.
+    """
+    await save_options_message([], ctx)
+
+
+async def reset_weights(ctx: commands.Context):
+    """
+    Resets the weights of all options in the context to their default value of 1.
+
+    Args:
+        ctx (commands.Context): The context of the command, which includes the message and other metadata.
+
+    This function retrieves the options from the context, updates their weights to 1, 
+    and saves the updated options back to the context.
+    """
+    options = await parse_options_message(ctx)
+    for option in options:
+        option['weight'] = 1
+    await save_options_message(options, ctx)
 
 
 async def list_options(ctx: commands.Context):
@@ -176,7 +236,7 @@ async def parse_add(addition: str, ctx: commands.Context):
     Returns:
         None
     """
-    message = ctx.send(f"Adding '{addition}' to the wheel...")
+    message = await ctx.send(f"Adding '{addition}' to the wheel...")
     if len(addition) == 0:
         await message.edit(content="Please specify a new item to add.")
         return
@@ -188,14 +248,15 @@ async def parse_add(addition: str, ctx: commands.Context):
             await message.edit(content=f"Adding the following items to the wheel: {', '.join(new_additions)}")
             for name in new_additions:
                 options.append({'name': name, 'weight': 1})
-            await save_options_message(ctx, options)
+            await save_options_message(options, ctx)
+            await message.edit(content=f"Added the following items to the wheel: {', '.join(new_additions)}")
         else:
             await message.edit(content="All the items are already in the wheel.")
     else:
-        await message.edit(content=f"Adding '{addition}' to the wheel!")
+        await message.edit(content=f"Added '{addition}' to the wheel!")
         options = await parse_options_message(ctx)
         options.append({'name':addition, 'weight':1})
-        await save_options_message(ctx, options)
+        await save_options_message(options, ctx)
 
 
 async def parse_remove(removal: str, ctx: commands.Context):
