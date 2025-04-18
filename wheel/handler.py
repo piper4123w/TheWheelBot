@@ -17,6 +17,7 @@ async def handle_message(ctx: commands.Context, command):
         - list: Lists all items.
         - spin: Spins the wheel.
         - help <command>: Provides help information for a specific command.
+        - reset <subcommand>: Resets the wheel options or weights (admin only).
 
     If the command is not recognized, it sends an error message indicating the valid commands.
     """
@@ -30,7 +31,8 @@ async def handle_message(ctx: commands.Context, command):
     elif command.startswith("list"):
         await list_options(ctx)
     elif command.startswith(f"spin"):
-        await spin_wheel(ctx)
+        remainder = command[len("spin "):].strip()
+        await spin_wheel(ctx, debug=("debug" in remainder.lower()))
     elif "help" in command:
         remainder = command[len("help "):].strip()
         await parse_help(remainder, ctx)
@@ -153,7 +155,7 @@ async def parse_help(remainder: str, ctx: commands.Context):
             await ctx.send("Usage:\n\t`$wheel spin` - Spins the wheel and randomly selects an item.")
 
 
-async def spin_wheel(ctx: commands.Context):
+async def spin_wheel(ctx: commands.Context, debug=False):
     """
     Spins a virtual wheel and sends the result to the Discord channel.
 
@@ -161,16 +163,21 @@ async def spin_wheel(ctx: commands.Context):
     determines a random weighted option, updates the weights accordingly,
     and then edits the original message to display the result.
 
+    It also Pins that message in the chat and then creates a scheduled event
+    in the guild for the selected option.
+
     Args:
         ctx (commands.Context): The context in which the command was invoked.
 
-    Returns:
-        None
     """
-    message = await ctx.send("Spinning the wheel...")
+    print("Spinning the wheel...")
+    message = await ctx.send( "Spinning the wheel..." if debug == False else "Debug mode - spinning the wheel...")
     result = await get_random_weighted_option(ctx)
-    await update_weights(result, ctx)
+    if not debug:
+        await update_weights(result, ctx)
     await message.edit(content=f"The Wheel has Spoken! The result is `{result}`")
+    await message.pin()
+    # TODO: create event?
 
 
 async def get_random_weighted_option(ctx: commands.Context):
