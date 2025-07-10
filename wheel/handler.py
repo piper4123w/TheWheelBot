@@ -286,7 +286,7 @@ async def parse_remove(removal: str, ctx: commands.Context):
     if len(removal) == 0:
         await ctx.send("Please specify an item to remove.")
         return
-    message = ctx.send(f"Removing '{removal}' from the wheel...")
+    message = await ctx.send(f"Removing '{removal}' from the wheel...")
     options = await parse_options_message(ctx)
     for option in options:
         if option['name'] == removal:
