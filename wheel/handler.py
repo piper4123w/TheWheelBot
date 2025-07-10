@@ -343,3 +343,8 @@ async def save_options_message(items, ctx: commands.Context):
                 if message.author == ctx.bot.user:
                     jsonStr = json.dumps({"options":items}, indent=4)
                     await message.edit(content=jsonStr)
+                    return # If the message is found and edited, exit the function
+            # If no message was found, create a new one
+            jsonStr = json.dumps({"options":items}, indent=4)
+            new_message = await channel.send(jsonStr)
+            await new_message.pin()
