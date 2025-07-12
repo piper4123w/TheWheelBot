@@ -69,10 +69,10 @@ async def parse_tag(remainder: str, ctx: commands.Context):
     if len(parts) != 2:
         await ctx.send(f"Usage:\n\t`$wheel {TAG} <item> <tags_separated_by_commas>`")
         return
-    tags = parts[0]
-    item = parts[1]
+    tags = parts[0].split(",")
+    item = parts[1:].join(" ")
     if ',' in tags:
-        for tag in tags.split(","):
+        for tag in tags:
             if not tag:
                 await ctx.send("Tag cannot be an empty string.")
                 return
