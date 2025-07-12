@@ -2,6 +2,22 @@ import json
 import random
 from discord.ext import commands
 
+# Constants for command names
+ADD = "add"
+REMOVE = "remove"
+LIST = "list"
+SPIN = "spin"
+HELP = "help"
+TAG = "tag"
+RESET = "reset"
+COMMANDS = [ADD, REMOVE, LIST, SPIN, HELP, TAG, RESET]
+
+# Constants for entry fields
+OPTIONS = "options"
+NAME = "name"
+WEIGHT = "weight"
+TAGS = "tags"
+
 
 async def handle_message(ctx: commands.Context, command):
     """
@@ -17,31 +33,77 @@ async def handle_message(ctx: commands.Context, command):
         - list: Lists all items.
         - spin: Spins the wheel.
         - help <command>: Provides help information for a specific command.
-        - reset <subcommand>: Resets the wheel options or weights (admin only).
+        - reset <subcommand>: Resets the wheel options, weights, or tags.
 
     If the command is not recognized, it sends an error message indicating the valid commands.
     """
-    if command.startswith(f"add"):
-        remainder = command[len("add "):].strip()
+    if command.startswith(ADD):
+        remainder = command[len(f"{ADD} "):].strip()
         # You can now use item_to_add for further processing
         await parse_add(remainder, ctx)
-    elif command.startswith("remove"):
-        remainder = command[len("remove "):].strip()
+    elif command.startswith(REMOVE):
+        remainder = command[len(f"{REMOVE} "):].strip()
         await parse_remove(remainder, ctx)
-    elif command.startswith("list"):
-        await list_options(ctx)
-    elif command.startswith(f"spin"):
-        remainder = command[len("spin "):].strip()
-        await spin_wheel(ctx, debug=("debug" in remainder.lower()))
-    elif "help" in command:
-        remainder = command[len("help "):].strip()
+    elif command.startswith(LIST):
+        remainder = command[len(f"{LIST} "):].strip()
+        await list_options(remainder, ctx)
+    elif command.startswith(SPIN):
+        remainder = command[len(f"{SPIN} "):].strip()
+        await spin_wheel(remainder, ctx, debug=("debug" in remainder.lower()))
+    elif command.startswith(HELP):
+        remainder = command[len(f"{HELP} "):].strip()
         await parse_help(remainder, ctx)
-    # -- ADMIN COMMANDS --
-    elif command.startswith("reset"):
+    elif command.startswith(TAG):
+        remainder = command[len(f"{TAG} "):].strip()
+        await parse_tag(remainder, ctx)
+    elif command.startswith(RESET):
         remainder = command[len("reset "):].strip()
         await parse_reset(remainder, ctx)
     else:
-        await ctx.send("Unknown command. Please use `'list'`, `'add'`, `'remove'`, `'spin'`, or `'help'`.")
+        await ctx.send(f"Unknown command. Please use `{', '.join(COMMANDS)}`.")
+
+
+async def parse_tag(remainder: str, ctx: commands.Context):
+    """    Parses the tag command and handles adding or removing tags from options."""
+    parts = remainder.split()
+    if len(parts) != 2:
+        await ctx.send(f"Usage:\n\t`$wheel {TAG} <item> <tags_sepearated_by_commoa>`")
+        return
+    item = parts[0]
+    tags = parts[1]
+    if ',' in tags:
+        for tag in tags.split(","):
+            if not tag:
+                await ctx.send("Tag cannot be an empty string.")
+                return
+            await add_tag_to_item(item, tag, ctx)
+        return
+    await add_tag_to_item(item, tags, ctx)
+
+
+async def add_tag_to_item(item: str, tag: str, ctx: commands.Context):
+    """
+    Adds a tag to an item in the wheel options.
+
+    Args:
+        item (str): The name of the item to which the tag will be added.
+        tag (str): The tag to be added to the item.
+        ctx (commands.Context): The context of the command invocation.
+    """
+    options = await parse_options_message(ctx)
+    for option in options:
+        if option[NAME] == item:
+            if TAGS not in option:
+                option[TAGS] = []
+            if tag not in option[TAGS]:
+                option[TAGS].append(tag)
+                await save_options_message(options, ctx)
+                await ctx.send(f"Added tag `{tag}` to item `{item}`.")
+                return
+            else:
+                await ctx.send(f"Item `{item}` already has tag `{tag}`.")
+                return
+    await ctx.send(f"Item `{item}` not found.")
 
 
 async def parse_reset(remainder: str, ctx: commands.Context):
@@ -58,16 +120,29 @@ async def parse_reset(remainder: str, ctx: commands.Context):
 
     Subcommands:
         - "help": Displays usage instructions for the reset command.
-        - "weights": Resets all weights to their default value of 1.
+        - "weight": Resets all weights to their default value of 1.
+        - "tag": Resets all tags to an empty list.
         - "options": Prompts the user for confirmation before resetting all options to their default values.
     """
-    if remainder.startswith("help") or len(remainder) == 0:
-        await ctx.send("ADMIN ONLY - Usage:\n\t`$wheel reset [SUBCOMMAND]`\n\t`options` - Resets the wheel options to the default values.\n\t`weights` - Resets the wheel weights to the default values.")
-    elif remainder.startswith("weights"):
+    if remainder.startswith(HELP) or len(remainder) == 0:
+        await ctx.send("Usage:\n\t`$wheel {RESET} "
+                        "\n[SUBCOMMANDS]`" \
+                        "\n\t`options` - Resets the wheel options to an empty list." \
+                        "\n\t`weights` - Resets the wheel weights to the default values." \
+                        "\n\t`tags` - Resets the wheel tags to an empty list." \
+                        "\n\t`help` - Displays this help message.")
+    elif remainder.startswith(WEIGHT):
         message = await ctx.send("Resetting all weights to 1...")
         await reset_weights(ctx)
         await message.edit(content="All weights have been reset to 1.")
-    elif remainder.startswith("options"):
+    elif remainder.startswith(TAG):
+        message = await ctx.send("Resetting all tags to an empty list...")
+        options = await parse_options_message(ctx)
+        for option in options:
+            option[TAGS] = []
+        await save_options_message(options, ctx)
+        await message.edit(content="All tags have been reset to an empty list.")
+    elif remainder.startswith(OPTIONS):
         message = await ctx.send("Resetting all options...")
         await reset_options(ctx)
         await message.edit(content="All options have been reset.")
@@ -96,11 +171,11 @@ async def reset_weights(ctx: commands.Context):
     """
     options = await parse_options_message(ctx)
     for option in options:
-        option['weight'] = 1
+        option[WEIGHT] = 1
     await save_options_message(options, ctx)
 
 
-async def list_options(ctx: commands.Context):
+async def list_options(remainder: str, ctx: commands.Context):
     """
     Lists all options currently on the wheel.
 
@@ -110,22 +185,40 @@ async def list_options(ctx: commands.Context):
 
     Args:
         ctx (commands.Context): The context in which the command was invoked.
-
+    remainder (str): The remainder of the command.
+    Usage:
+        - `$wheel list`: Lists all items currently on the wheel.
+        - `$wheel list [TAG]`: Lists all items filtered by the specified tag.
     Returns:
         None
     """
-    message = await ctx.send("Listing all items on the wheel...")
-    options = await parse_options_message(ctx)
-    if options:
-        space = "\n\t"
-        optionsStr = ""
-        for option in options:
-            print(f"Option: {option}")  # Debugging line to see each option
-            if len(option) > 0:
-                optionsStr += f"{space}{option['name']} @ {option['weight']}"
-        await message.edit(content=f"Current items on the wheel: {optionsStr}")
+    if len(remainder) == 0:
+        message = await ctx.send("Listing all items on the wheel...")
+        options = await parse_options_message(ctx)
+        if options:
+            space = "\n\t"
+            optionsStr = ""
+            for option in options:
+                print(f"Option: {option}")  # Debugging line to see each option
+                optionsStr += f"{space}{option[NAME]} @ {option[WEIGHT]}"
+                if TAGS in option and option[TAGS]:
+                    optionsStr += f" - Tags: {', '.join(option[TAGS])}"
+            await message.edit(content=f"Current items on the wheel: {optionsStr}")
+        else:
+            await message.edit(content="The wheel is empty! Please add items first.")
     else:
-        await message.edit(content="The wheel is empty! Please add items first.")
+        message = await ctx.send(f"Listing all items with tag '{remainder}' on the wheel...")
+        options = await parse_options_message(ctx)
+        filtered_options = [option for option in options if TAGS in option and remainder in option[TAGS]]
+        if filtered_options:
+            space = "\n\t"
+            optionsStr = ""
+            for option in filtered_options:
+                print(f"Option: {option}")
+                if len(option) > 0:
+                    optionsStr += f"{space}{option[NAME]} @ {option[WEIGHT]}"
+            await message.edit(content=f"Current items on the wheel with tag '{remainder}':{optionsStr}")
+
 
 
 async def parse_help(remainder: str, ctx: commands.Context):
@@ -142,20 +235,29 @@ async def parse_help(remainder: str, ctx: commands.Context):
             - `$wheel help remove`: Displays usage instructions for removing items from the wheel.
             - `$wheel help list`: Displays usage instructions for listing all items on the wheel.
             - `$wheel help spin`: Displays usage instructions for spinning the wheel.
+            - `$wheel help reset`: Displays usage instructions for resetting the wheel options or weights.
         """
         if len(remainder) == 0:
-            await ctx.send("$wheel - command module for spinning the wheel of fate\n\tCommands: `'add'`, `'remove'`, `'spin'`, `'help'`")
-        if "add" in remainder:
-            await ctx.send("Usage:\n\t`$wheel add <item>` - Adds an item to the wheel.\n\t`$wheel add <item1>,<item2>,...` - Adds multiple items to the wheel.")
-        if "remove" in remainder:
-            await ctx.send("Usage:\n\t`$wheel remove <item>` - Removes an item from the wheel.")
-        if "list" in remainder:
-            await ctx.send("Usage:\n\t`$wheel list` - Lists all items currently on the wheel.")
-        if "spin" in remainder:
-            await ctx.send("Usage:\n\t`$wheel spin` - Spins the wheel and randomly selects an item.")
+            await ctx.send(f"$wheel - command module for spinning the wheel of fate\n\tCommands: `{ADD}`, `{REMOVE}`, `{SPIN}`, `{HELP}`")
+        if ADD in remainder:
+            await ctx.send(f"Usage:\n\t`$wheel {ADD} <item>` - Adds an item to the wheel.\n\t`$wheel {ADD} <item1>,<item2>,...` - Adds multiple items to the wheel.")
+        if REMOVE in remainder:
+            await ctx.send(f"Usage:\n\t`$wheel {REMOVE} <item>` - Removes an item from the wheel.")
+        if LIST in remainder:
+            await ctx.send(f"Usage:\n\t`$wheel {LIST}` - Lists all items currently on the wheel.")
+        if SPIN in remainder:
+            await ctx.send(f"Usage:\n\t`$wheel {SPIN}` - Spins the wheel and randomly selects an item.")
+        if RESET in remainder:
+            await ctx.send(f"Usage:\n\t`$wheel {RESET} "
+                           "\n[SUBCOMMANDS]`" \
+                           "\n\t`options` - Resets the wheel options to an empty list." \
+                           "\n\t`weights` - Resets the wheel weights to the default values." \
+                           "\n\t`tags` - Resets the wheel tags to an empty list." \
+                           "\n\t`help` - Displays this help message.")
 
 
-async def spin_wheel(ctx: commands.Context, debug=False):
+
+async def spin_wheel(remainder: str, ctx: commands.Context, debug=False):
     """
     Spins a virtual wheel and sends the result to the Discord channel.
 
@@ -166,18 +268,43 @@ async def spin_wheel(ctx: commands.Context, debug=False):
     It also Pins that message in the chat and then creates a scheduled event
     in the guild for the selected option.
 
+    If there is a remainder in the command, it is assumed to be a list of tags to filter the wheel's options.
+
     Args:
+        remainder (str): The remainder of the command, which can be used to pass additional parameters.
         ctx (commands.Context): The context in which the command was invoked.
+        debug (bool): If True, runs in debug mode, which does not update weights or create events.
 
     """
-    print("Spinning the wheel...")
-    message = await ctx.send( "Spinning the wheel..." if debug == False else "Debug mode - spinning the wheel...")
-    result = await get_random_weighted_option(ctx)
-    if not debug:
-        await update_weights(result, ctx)
-    await message.edit(content=f"The Wheel has Spoken! The result is `{result}`")
-    await message.pin()
     # TODO: create event?
+    if len(remainder) == 0:
+        print("Spinning the wheel...")
+        message = await ctx.send( "Spinning the wheel..." if debug == False else "Debug mode - spinning the wheel...")
+        result = await get_random_weighted_option(ctx)
+        if not debug:
+            await update_weights(result, ctx)
+        await message.edit(content=f"The Wheel has Spoken! The result is `{result}`")
+        await message.pin()
+    else:
+        tags = remainder.split(",")
+        print(f"Spinning the wheel with tags: {remainder}")
+        message = await ctx.send(f"Spinning the wheel with tags: {remainder}" if debug == False else "Debug mode - spinning the wheel with tags...")
+        options = await parse_options_message(ctx)
+        filtered_options = [
+            option for option in options
+            if TAGS in option and all(tag.strip() in option[TAGS] for tag in tags if tag.strip())
+        ]
+        if not filtered_options:
+            await message.edit(content=f"No options found with the given tags `{remainder}`.")
+            return
+        weighted_options = []
+        for option in filtered_options:
+            weighted_options.extend([option[NAME]] * option[WEIGHT])
+        result = random.choice(weighted_options)
+        if not debug:
+            await update_weights(result, ctx)
+        await message.edit(content=f"The Wheel has Spoken! The result given the tags `{remainder}` is `{result}`")
+        await message.pin()
 
 
 async def get_random_weighted_option(ctx: commands.Context):
@@ -198,7 +325,7 @@ async def get_random_weighted_option(ctx: commands.Context):
         return None
     weighted_options = []
     for option in options:
-        weighted_options.extend([option['name']] * option['weight'])    
+        weighted_options.extend([option[NAME]] * option[WEIGHT])
     return random.choice(weighted_options)
 
 
@@ -219,10 +346,10 @@ async def update_weights(picked_option, ctx: commands.Context):
     # options = parse_options_file()
     options = await parse_options_message(ctx)
     for option in options:
-        if option['name'] != picked_option:
-            option['weight'] += 1
+        if option[NAME] != picked_option:
+            option[WEIGHT] += 1
         else:
-            option['weight'] = 0
+            option[WEIGHT] = 0
     # save_options_file(options)
     await save_options_message(options, ctx)
 
@@ -254,7 +381,7 @@ async def parse_add(addition: str, ctx: commands.Context):
         if new_additions:
             await message.edit(content=f"Adding the following items to the wheel: {', '.join(new_additions)}")
             for name in new_additions:
-                options.append({'name': name, 'weight': 1})
+                options.append({NAME: name, WEIGHT: 1})
             await save_options_message(options, ctx)
             await message.edit(content=f"Added the following items to the wheel: {', '.join(new_additions)}")
         else:
@@ -262,7 +389,7 @@ async def parse_add(addition: str, ctx: commands.Context):
     else:
         if addition.strip() != "":
             options = await parse_options_message(ctx)
-            options.append({'name':addition, 'weight':1})
+            options.append({NAME: addition, WEIGHT: 1})
             await message.edit(content=f"Added '{addition}' to the wheel!")
             await save_options_message(options, ctx)
         else:
@@ -289,7 +416,7 @@ async def parse_remove(removal: str, ctx: commands.Context):
     message = await ctx.send(f"Removing '{removal}' from the wheel...")
     options = await parse_options_message(ctx)
     for option in options:
-        if option['name'] == removal:
+        if option[NAME] == removal:
             options.remove(option)
             await save_options_message(options, ctx)
             await message.edit(content=f"Removed '{removal}' from the wheel!")
@@ -321,7 +448,7 @@ async def parse_options_message(ctx: commands.Context):
                 if message.author == ctx.bot.user:
                     try:
                         data = json.loads(message.content)
-                        return data['options']
+                        return data[OPTIONS]
                     except json.JSONDecodeError:
                         print("Error decoding the pinned message content.")
                         return []
@@ -341,10 +468,10 @@ async def save_options_message(items, ctx: commands.Context):
             pins = await channel.pins()
             for message in pins:
                 if message.author == ctx.bot.user:
-                    jsonStr = json.dumps({"options":items}, indent=4)
+                    jsonStr = json.dumps({OPTIONS:items}, indent=4)
                     await message.edit(content=jsonStr)
                     return # If the message is found and edited, exit the function
             # If no message was found, create a new one
-            jsonStr = json.dumps({"options":items}, indent=4)
+            jsonStr = json.dumps({OPTIONS:items}, indent=4)
             new_message = await channel.send(jsonStr)
             await new_message.pin()
