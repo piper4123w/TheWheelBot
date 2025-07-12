@@ -67,10 +67,10 @@ async def parse_tag(remainder: str, ctx: commands.Context):
     """    Parses the tag command and handles adding or removing tags from options."""
     parts = remainder.split()
     if len(parts) != 2:
-        await ctx.send(f"Usage:\n\t`$wheel {TAG} <item> <tags_sepearated_by_commoa>`")
+        await ctx.send(f"Usage:\n\t`$wheel {TAG} <item> <tags_separated_by_commas>`")
         return
-    item = parts[0]
-    tags = parts[1]
+    tags = parts[0]
+    item = parts[1]
     if ',' in tags:
         for tag in tags.split(","):
             if not tag:
@@ -235,6 +235,7 @@ async def parse_help(remainder: str, ctx: commands.Context):
             - `$wheel help remove`: Displays usage instructions for removing items from the wheel.
             - `$wheel help list`: Displays usage instructions for listing all items on the wheel.
             - `$wheel help spin`: Displays usage instructions for spinning the wheel.
+            - `$wheel help tag`: Displays usage instructions for adding or removing tags from items.
             - `$wheel help reset`: Displays usage instructions for resetting the wheel options or weights.
         """
         if len(remainder) == 0:
@@ -247,6 +248,8 @@ async def parse_help(remainder: str, ctx: commands.Context):
             await ctx.send(f"Usage:\n\t`$wheel {LIST}` - Lists all items currently on the wheel.")
         if SPIN in remainder:
             await ctx.send(f"Usage:\n\t`$wheel {SPIN}` - Spins the wheel and randomly selects an item.")
+        if TAG in remainder:
+            await ctx.send(f"Usage:\n\t`$wheel {TAG} <tags> <item>` - Adds tags to an item.\n\t`$wheel {TAG} <tag1>,<tag2>,... <item>` - Adds multiple tags to an item.")
         if RESET in remainder:
             await ctx.send(f"Usage:\n\t`$wheel {RESET} "
                            "\n[SUBCOMMANDS]`" \
