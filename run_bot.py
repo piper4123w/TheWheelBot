@@ -35,13 +35,13 @@ async def handle_wheel_command(
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+    start_scheduled_jobs(bot)
 
 
 async def main():
     async with bot:
-        start_scheduled_jobs(bot)
-
         await bot.start(get_secret('DISCORD_API_TOKEN'))
+
 
 
 def get_secret(key):

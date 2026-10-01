@@ -1,29 +1,33 @@
-import asyncio
-
-from datetime import datetime, timedelta, time
+from datetime import time
 from zoneinfo import ZoneInfo
 
 from voting.voting import Vote
-
+from availability.scheduled_trigger import ScheduledTrigger
 
 # ============================================================
+
 # Configuration
+
 # ============================================================
 
 CHANNEL_ID = 1352336757240369274  # TODO: Change from kylesbottesting channel
 
 # Central Time - automatically handles CST/CDT
+
 CENTRAL = ZoneInfo("America/Chicago")
 
+HH_Day_Selection_TitleKey = "HH Day Selection"
 
 # ============================================================
+
 # Scheduled Jobs
+
 # ============================================================
 
-async def friday_message_task(bot):
+async def send_day_selection_vote(bot):
     """
-    Sends a message to the configured Discord channel
-    every Friday at 9:00 PM Central Time.
+    Creates a HH Day Selection vote every Friday night
+    at 9:00 PM Central Time.
     """
 
     await bot.wait_until_ready()
@@ -32,248 +36,162 @@ async def friday_message_task(bot):
 
     if channel is None:
         print(
-            f"[Friday Message] Could not find channel "
-            f"{CHANNEL_ID}"
+            f"[{HH_Day_Selection_TitleKey}-StartVote] "
+            f"Could not find channel {CHANNEL_ID}"
         )
         return
 
-    print("[Friday Message] Scheduler started.")
+    print(
+        f"[{HH_Day_Selection_TitleKey}-StartVote] "
+        "Scheduler started."
+    )
 
     while not bot.is_closed():
-        now = datetime.now(CENTRAL)
 
-        # Friday = 4
-        days_until_friday = (4 - now.weekday()) % 7
-
-        target = datetime.combine(
-            now.date() + timedelta(days=days_until_friday),
-            time(hour=21, minute=0),
-            tzinfo=CENTRAL
+        trigger = ScheduledTrigger(
+            day=4,  # Friday
+            time=time(hour=21),
+            timezone=CENTRAL
         )
 
-        # If it's already Friday at or after 9:00 PM,
-        # schedule the next occurrence for the following Friday.
-        if target <= now:
-            target += timedelta(days=7)
-
-        seconds_until_target = (
-            target - now
-        ).total_seconds()
-
-        print(
-            "[Friday Message] Next message scheduled for "
-            f"{target.strftime('%Y-%m-%d %I:%M %p %Z')}"
-        )
-
-        await asyncio.sleep(seconds_until_target)
+        # Pause until the next Friday at 9:00 PM.
+        await trigger.async_awaitTrigger()
 
         try:
-            await channel.send(
-                "🎉 Happy Friday everyone! 🍻"
+            vote = Vote(
+                bot=bot,
+                channel_id=CHANNEL_ID,
+                title_key=HH_Day_Selection_TitleKey,
+                options=[
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday"
+                ]
             )
 
-            print("[Friday Message] Message sent.")
+            await vote.create()
+
+            print(
+                f"[{HH_Day_Selection_TitleKey}-StartVote] "
+                "Vote created successfully."
+            )
 
         except Exception as e:
             print(
-                f"[Friday Message] Failed to send message: {e}"
+                f"[{HH_Day_Selection_TitleKey}-StartVote] "
+                f"Failed to create vote: {e}"
             )
 
-
-async def test_scheduled_message_task(bot):
+async def count_day_selection_vote_task(bot):
     """
-    Temporary development task.
+    Counts the HH Day Selection vote every Sunday at 9:00 PM
+    Central Time.
 
-    Sends a test message 15 seconds after the bot starts.
+    The vote is located by searching Discord message history
+    rather than relying on in-memory state.
     """
 
     await bot.wait_until_ready()
-
-    print("[Test Message] Waiting 15 seconds...")
-
-    await asyncio.sleep(15)
 
     channel = bot.get_channel(CHANNEL_ID)
 
     if channel is None:
         print(
-            f"[Test Message] Could not find channel "
-            f"{CHANNEL_ID}"
+            f"[{HH_Day_Selection_TitleKey}-EndVote] "
+            f"Could not find channel {CHANNEL_ID}"
         )
         return
 
-    try:
-        await channel.send(
-            "🧪 Test scheduled message!"
-        )
-
-        print("[Test Message] Message sent.")
-
-    except Exception as e:
-        print(
-            f"[Test Message] Failed to send message: {e}"
-        )
-
-
-async def test_scheduled_vote_task(bot):
-    """
-    Temporary development task.
-
-    Creates a food vote 15 seconds after the bot starts.
-    """
-
-    await bot.wait_until_ready()
-
-    print("[Test Vote] Waiting 15 seconds...")
-
-    await asyncio.sleep(15)
-
-    try:
-        vote = Vote(
-            bot=bot,
-            channel_id=CHANNEL_ID,
-            title_key="FoodSelectionTest",
-            options=[
-                "Pizza",
-                "Burgers",
-                "Tacos",
-                "Chinese"
-            ]
-        )
-
-        await vote.create()
-
-        print(
-            "[Test Vote] Vote created successfully."
-        )
-
-    except Exception as e:
-        print(
-            f"[Test Vote] Failed to create vote: {e}"
-        )
-
-
-async def test_count_vote_task(bot):
-    """
-    Temporary development task.
-
-    Counts the FoodSelectionTest vote 30 seconds after
-    the bot starts.
-
-    The vote is located by searching Discord message
-    history rather than relying on in-memory state.
-    """
-
-    await bot.wait_until_ready()
-
     print(
-        "[Test Vote Count] Waiting 30 seconds..."
+        f"[{HH_Day_Selection_TitleKey}-EndVote] "
+        "Scheduler started."
     )
 
-    await asyncio.sleep(60)
+    while not bot.is_closed():
 
-    try:
-        # Reconstruct the vote from its configuration.
-        #
-        # No reference to the original Vote object is required.
-        vote = Vote(
-            bot=bot,
-            channel_id=CHANNEL_ID,
-            title_key="FoodSelectionTest",
-            options=[
-                "Pizza",
-                "Burgers",
-                "Tacos",
-                "Chinese"
-            ]
+        trigger = ScheduledTrigger(
+            day=6,  # Sunday
+            time=time(hour=21, minute=0),
+            timezone=CENTRAL
         )
 
-        vote_counts = await vote.get_vote_counts()
-        winners = await vote.count_votes()
+        # Pause until the next Sunday at 9:00 PM.
+        await trigger.async_awaitTrigger()
 
-        print(
-            f"[Test Vote Count] Vote counts: "
-            f"{vote_counts}"
-        )
+        try:
+            # Reconstruct the vote configuration.
+            #
+            # No reference to the original Vote object is required.
+            vote = Vote(
+                bot=bot,
+                channel_id=CHANNEL_ID,
+                title_key=HH_Day_Selection_TitleKey,
+                options=[
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday"
+                ]
+            )
 
-        print(
-            f"[Test Vote Count] Winners: "
-            f"{winners}"
-        )
+            # Find, count, and complete the vote.
+            winners = await vote.complete(
+                HH_Day_Selection_TitleKey
+            )
 
-        channel = bot.get_channel(CHANNEL_ID)
+            # Format winning result.
+            if len(winners) == 0:
+                winner_text = (
+                    "😢 **No one voted :(**"
+                )
 
-        if channel is None:
+            elif len(winners) == 1:
+                winner_text = (
+                    f"🏆 **Winner: {winners[0]}**"
+                )
+
+            else:
+                winner_text = (
+                    "🏆 **Tie:** "
+                    + ", ".join(winners)
+                )
+
+            await channel.send(
+                f"📊 **{HH_Day_Selection_TitleKey} - Vote Results**\n\n"
+                f"{winner_text}"
+            )
+
             print(
-                f"[Test Vote Count] Could not find channel "
-                f"{CHANNEL_ID}"
-            )
-            return
-
-        # Format individual vote counts.
-        results = "\n".join(
-            f"**{option}**: {count}"
-            for option, count in vote_counts.items()
-        )
-
-        # Format winning result.
-        if len(winners) == 0:
-            winner_text = (
-                "🏆 **No results found.**"
-            )
-        elif len(winners) == 1:
-            winner_text = (
-                f"🏆 **Winner: {winners[0]}**"
-            )
-        else:
-            winner_text = (
-                "🏆 **Tie:** "
-                + ", ".join(winners)
+                f"[{HH_Day_Selection_TitleKey}-EndVote] "
+                f"Vote completed. Winners: {winners}"
             )
 
-        await channel.send(
-            f"📊 **Vote Results**\n\n"
-            f"{results}\n\n"
-            f"{winner_text}"
-        )
-
-        print(
-            "[Test Vote Count] Results sent."
-        )
-
-    except Exception as e:
-        print(
-            f"[Test Vote Count] Failed to count vote: {e}"
-        )
-
+        except Exception as e:
+            print(
+                f"[{HH_Day_Selection_TitleKey}-EndVote] "
+                f"Failed to count vote: {e}"
+            )
 
 # ============================================================
+
 # Scheduler Startup
+
 # ============================================================
 
 def start_scheduled_jobs(bot):
     """
-    Starts all recurring and development scheduled jobs.
+    Starts all recurring scheduled jobs.
     """
 
-    # Recurring Friday message
     bot.loop.create_task(
-        friday_message_task(bot)
+        send_day_selection_vote(bot)
     )
 
-    # Temporary development test message
     bot.loop.create_task(
-        test_scheduled_message_task(bot)
-    )
-
-    # Temporary scheduled vote test
-    bot.loop.create_task(
-        test_scheduled_vote_task(bot)
-    )
-
-    # Temporary scheduled vote count test
-    bot.loop.create_task(
-        test_count_vote_task(bot)
+        count_day_selection_vote_task(bot)
     )
 
     print(
