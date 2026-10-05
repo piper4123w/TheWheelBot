@@ -10,7 +10,7 @@ from availability.scheduled_trigger import ScheduledTrigger
 
 # ============================================================
 
-CHANNEL_ID = 1352336757240369274  # TODO: Change from kylesbottesting channel
+CHANNEL_ID = 1352333984067092644  # TODO: manually set to general for now, probably should come from the json OR the wheel data channel
 
 # Central Time - automatically handles CST/CDT
 
