@@ -1,5 +1,6 @@
 from datetime import time
 from zoneinfo import ZoneInfo
+import random
 
 from voting.voting import Vote
 from availability.scheduled_trigger import ScheduledTrigger
@@ -155,8 +156,8 @@ async def count_day_selection_vote_task(bot):
 
             else:
                 winner_text = (
-                    "🏆 **Tie:** "
-                    + ", ".join(winners)
+                    "🏆 **Tie:**\nRandomly selecting the winner..."
+                    + f"\n\n...The winner is {random.choice(winners)}"
                 )
 
             await channel.send(
