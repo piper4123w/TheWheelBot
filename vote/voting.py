@@ -2,6 +2,9 @@ from dataclasses import dataclass
 
 import discord
 
+ACTIVE_VOTE="ACTIVE VOTE"
+COMPLETE_VOTE_EMOJI="✅"
+
 @dataclass
 class VoteOption:
     """
@@ -28,10 +31,17 @@ class Vote:
 
     def __init__(
         self,
+        messageContent: str
+    ):
+        
+
+    def __init__(
+        self,
         bot: discord.Client,
         channel_id: int,
         title_key: str,
-        options: list[str]
+        options: list[str],
+        termination_reaction: str = ":)"
     ):
         if len(options) > 26:
             raise ValueError(
@@ -96,7 +106,7 @@ class Vote:
         if title_key is None:
             title_key = self.title_key
 
-        return f"[ACTIVE VOTE - {title_key}]"
+        return f"[{ACTIVE_VOTE} - {title_key}]"
 
     async def create(self) -> discord.Message:
         """

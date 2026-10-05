@@ -2,7 +2,7 @@ from datetime import time
 from zoneinfo import ZoneInfo
 import random
 
-from voting.voting import Vote
+from vote.voting import Vote
 from availability.scheduled_trigger import ScheduledTrigger
 
 # ============================================================
