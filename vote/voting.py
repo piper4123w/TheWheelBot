@@ -28,13 +28,6 @@ class Vote:
 
         [ACTIVE VOTE - FoodSelectionTest]
     """
-
-    def __init__(
-        self,
-        messageContent: str
-    ):
-        
-
     def __init__(
         self,
         bot: discord.Client,
