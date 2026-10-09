@@ -1,6 +1,5 @@
 from datetime import time
 from zoneinfo import ZoneInfo
-import random
 
 from vote.voting import Vote
 from availability.scheduled_trigger import ScheduledTrigger
@@ -143,26 +142,9 @@ async def count_day_selection_vote_task(bot):
                 HH_Day_Selection_TitleKey
             )
 
-            # Format winning result.
-            if len(winners) == 0:
-                winner_text = (
-                    "😢 **No one voted :(**"
-                )
-
-            elif len(winners) == 1:
-                winner_text = (
-                    f"🏆 **Winner: {winners[0]}**"
-                )
-
-            else:
-                winner_text = (
-                    "🏆 **Tie:**\nRandomly selecting the winner..."
-                    + f"\n\n...The winner is {random.choice(winners)}"
-                )
-
             await channel.send(
                 f"📊 **{HH_Day_Selection_TitleKey} - Vote Results**\n\n"
-                f"{winner_text}"
+                f"{Vote.generate_winner_text(winners)}"
             )
 
             print(

@@ -62,9 +62,7 @@ async def on_raw_reaction_add(payload):
 
     # Check if this is the active vote message
     if ACTIVE_VOTE in message.content:
-        await vote_handle_reaction(payload.emoji, message.content)
-    else:
-        print("Unhandled reaction")
+        await vote_handle_reaction(payload.emoji, message, bot)
 
 
 @bot.event

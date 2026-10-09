@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 import discord
+import random
+import re
 
 ACTIVE_VOTE="ACTIVE VOTE"
 COMPLETE_VOTE_EMOJI="✅"
@@ -62,6 +64,12 @@ class Vote:
             )
             for index, value in enumerate(options)
         ]
+
+    @classmethod
+    def parse_from_message(cls, message: discord.Message, bot: discord.Client):
+        title_key = re.search(r'\[ACTIVE VOTE - ([0-9a-fA-F-]{36})\]', message.content).group(1)
+        options = re.findall(r'^[🇦-🇿]\s+(.+)$', message.content, re.MULTILINE)
+        return cls(bot, message.channel.id, title_key, options)
 
     @staticmethod
     def letter_to_emoji(letter: str) -> str:
@@ -281,3 +289,23 @@ class Vote:
         )
 
         return winners
+
+
+    @staticmethod
+    def generate_winner_text(winners):
+        # Format winning result.
+        if len(winners) == 0:
+            return (
+                "😢 **No one voted :(**"
+            )
+
+        elif len(winners) == 1:
+            return (
+                f"🏆 **Winner: {winners[0]}**"
+            )
+
+        else:
+            return (
+                "🏆 **Tie:**\nRandomly selecting the winner..."
+                + f"\n\n...The winner is {random.choice(winners)}"
+            )

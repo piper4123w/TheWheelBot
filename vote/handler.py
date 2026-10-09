@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 import uuid
 
@@ -24,9 +25,14 @@ async def handle_message(ctx: commands.Context, command):
         await ctx.send(f"Unknown command. Please use `{', '.join(COMMANDS)}`.")
 
 
-async def handle_reaction(emoji, messageContent: str):
+async def handle_reaction(emoji, message: discord.Message, bot: discord.Client):
     if(emoji.name == COMPLETE_VOTE_EMOJI):
-        print("TODO: Parse the messageContent into a vote object")
+        vote = Vote.parse_from_message(message, bot)
+        results = await vote.complete()
+
+        await message.reply(Vote.generate_winner_text(results))
+
+        print(f"Custom vote complete - {results}")
 
 
 async def parse_start(remainder: str, ctx: commands.Context):
