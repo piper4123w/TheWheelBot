@@ -36,7 +36,7 @@ class Vote:
         channel_id: int,
         title_key: str,
         options: list[str],
-        termination_reaction: str = ":)"
+        termination_reaction: str = None
     ):
         if len(options) > 26:
             raise ValueError(
@@ -64,6 +64,8 @@ class Vote:
             )
             for index, value in enumerate(options)
         ]
+
+        self.termination_reaction = termination_reaction
 
     @classmethod
     def parse_from_message(cls, message: discord.Message, bot: discord.Client):
@@ -139,6 +141,9 @@ class Vote:
                 f"{emoji} {option.value}"
             )
 
+        if self.termination_reaction is not None:
+            message_lines.append(f"\nEnd Vote ✅")
+
         message = await channel.send(
             "\n".join(message_lines)
         )
@@ -151,6 +156,9 @@ class Vote:
             emoji = self.letter_to_emoji(option.letter)
 
             await message.add_reaction(emoji)
+
+        if self.termination_reaction is not None:
+            await message.add_reaction("✅")
 
         return message
 

@@ -46,7 +46,8 @@ async def parse_start(remainder: str, ctx: commands.Context):
         bot=ctx.bot,
         channel_id=ctx.channel.id,
         title_key=uuid.uuid1(),
-        options=options
+        options=options,
+        termination_reaction="✅"
     )
 
     await vote.create()
