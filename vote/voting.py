@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 
 import discord
+import random
+import re
+
+ACTIVE_VOTE="ACTIVE VOTE"
+COMPLETE_VOTE_EMOJI="✅"
 
 @dataclass
 class VoteOption:
@@ -25,13 +30,13 @@ class Vote:
 
         [ACTIVE VOTE - FoodSelectionTest]
     """
-
     def __init__(
         self,
         bot: discord.Client,
         channel_id: int,
         title_key: str,
-        options: list[str]
+        options: list[str],
+        termination_reaction: str = None
     ):
         if len(options) > 26:
             raise ValueError(
@@ -59,6 +64,14 @@ class Vote:
             )
             for index, value in enumerate(options)
         ]
+
+        self.termination_reaction = termination_reaction
+
+    @classmethod
+    def parse_from_message(cls, message: discord.Message, bot: discord.Client):
+        title_key = re.search(r'\[ACTIVE VOTE - ([0-9a-fA-F-]{36})\]', message.content).group(1)
+        options = re.findall(r'^[🇦-🇿]\s+(.+)$', message.content, re.MULTILINE)
+        return cls(bot, message.channel.id, title_key, options)
 
     @staticmethod
     def letter_to_emoji(letter: str) -> str:
@@ -96,7 +109,7 @@ class Vote:
         if title_key is None:
             title_key = self.title_key
 
-        return f"[ACTIVE VOTE - {title_key}]"
+        return f"[{ACTIVE_VOTE} - {title_key}]"
 
     async def create(self) -> discord.Message:
         """
@@ -128,6 +141,9 @@ class Vote:
                 f"{emoji} {option.value}"
             )
 
+        if self.termination_reaction is not None:
+            message_lines.append(f"\nEnd Vote ✅")
+
         message = await channel.send(
             "\n".join(message_lines)
         )
@@ -140,6 +156,9 @@ class Vote:
             emoji = self.letter_to_emoji(option.letter)
 
             await message.add_reaction(emoji)
+
+        if self.termination_reaction is not None:
+            await message.add_reaction("✅")
 
         return message
 
@@ -278,3 +297,23 @@ class Vote:
         )
 
         return winners
+
+
+    @staticmethod
+    def generate_winner_text(winners):
+        # Format winning result.
+        if len(winners) == 0:
+            return (
+                "😢 **No one voted :(**"
+            )
+
+        elif len(winners) == 1:
+            return (
+                f"🏆 **Winner: {winners[0]}**"
+            )
+
+        else:
+            return (
+                "🏆 **Tie:**\nRandomly selecting the winner..."
+                + f"\n\n...The winner is {random.choice(winners)}"
+            )
