@@ -67,7 +67,8 @@ async def send_day_selection_vote(bot):
                     "Tuesday",
                     "Wednesday",
                     "Thursday",
-                    "Friday"
+                    "Friday",
+                    "Saturday"
                 ]
             )
 
